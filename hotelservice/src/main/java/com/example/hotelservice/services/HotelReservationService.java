@@ -79,7 +79,8 @@ public class HotelReservationService {
             ));
 
     List<AvailabilityWindow> windows =
-            windowRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqual(end, start);
+            windowRepository.findWindowsWithChambre(start, end);
+
 
     AvailabilityWindow windowForRoom = null;
     for (AvailabilityWindow w : windows) {

@@ -15,9 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -49,27 +48,48 @@ public class HotelSearchService {
       start = LocalDate.parse(request.startDate());
       end = LocalDate.parse(request.endDate());
     } catch (DateTimeParseException e) {
-      throw new ApiException(ErrorCode.BAD_REQUEST, "Invalid date format",
-              Map.of("startDate", request.startDate(), "endDate", request.endDate()));
+      throw new ApiException(
+              ErrorCode.BAD_REQUEST,
+              "Invalid date format",
+              Map.of("startDate", request.startDate(), "endDate", request.endDate())
+      );
     }
 
     if (!end.isAfter(start)) {
-      throw new ApiException(ErrorCode.BAD_REQUEST, "endDate must be after startDate",
-              Map.of("startDate", start.toString(), "endDate", end.toString()));
+      throw new ApiException(
+              ErrorCode.BAD_REQUEST,
+              "endDate must be after startDate",
+              Map.of("startDate", start.toString(), "endDate", end.toString())
+      );
     }
 
     int nights = (int) ChronoUnit.DAYS.between(start, end);
 
     List<AvailabilityWindow> windows =
-            windowRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqual(end, start);
+            windowRepository.findWindowsWithChambre(start, end);
+
+
+    List<Long> chambreIds = windows.stream()
+            .map(w -> w.getChambre().getId())
+            .distinct()
+            .toList();
+
+    Map<Long, Long> overlappingByChambreId = reservationRepository
+            .countOverlappingGrouped(chambreIds, start, end)
+            .stream()
+            .collect(Collectors.toMap(
+                    ReservationRepository.ChambreReservationCount::getChambreId,
+                    ReservationRepository.ChambreReservationCount::getCnt
+            ));
 
     List<Offer> offers = new ArrayList<>();
+
     for (AvailabilityWindow w : windows) {
       Chambre c = w.getChambre();
 
       if (request.guests() > c.getNombreLits()) continue;
 
-      long overlapping = reservationRepository.countOverlappingReservations(c, start, end);
+      long overlapping = overlappingByChambreId.getOrDefault(c.getId(), 0L);
       int remaining = w.getQuantity() - (int) overlapping;
       if (remaining <= 0) continue;
 
