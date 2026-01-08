@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${agencyName}">Agence</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; }
+        .row { display: flex; gap: 24px; align-items: flex-start; }
+        .card { border: 1px solid #ddd; padding: 16px; border-radius: 10px; width: 520px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; vertical-align: top; }
+        .muted { color: #666; }
+        .pill { display:inline-block; padding:2px 8px; border:1px solid #ddd; border-radius:999px; margin-left:8px; }
+        .btn { padding: 6px 10px; border: 1px solid #ccc; border-radius: 8px; background: #fff; cursor: pointer; }
+        .btn:hover { background: #f6f6f6; }
+        input { padding: 6px; width: 100%; box-sizing: border-box; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .error { border:1px solid #f5c2c7; background:#f8d7da; padding:10px; border-radius:8px; margin-top:12px; }
+    </style>
+</head>
+<body>
+
+<h1 th:text="${agencyName}">Agency</h1>
+<p class="muted">SearchOffer + MakeReservation (GraphQL)</p>
+
+<div class="row">
+
+    <div class="card">
+        <h2>Search</h2>
+
+        <form method="post" action="/search">
+            <div>
+                <label>City</label><br>
+                <input type="text" name="city" placeholder="Paris" th:value="${city}">
+            </div>
+            <br>
+
+            <div class="grid">
+                <div>
+                    <label>Start date</label><br>
+                    <input type="text" name="startDate" placeholder="2027-12-12" th:value="${startDate}" required>
+                </div>
+
+                <div>
+                    <label>End date</label><br>
+                    <input type="text" name="endDate" placeholder="2027-12-15" th:value="${endDate}" required>
+                </div>
+            </div>
+            <br>
+
+            <div>
+                <label>Guests</label><br>
+                <input type="number" name="guests" min="1" th:value="${guests}" required>
+            </div>
+            <br>
+
+            <button class="btn" type="submit">Search</button>
+        </form>
+
+        <div th:if="${errorMessage != null}" class="error">
+            <strong>Error:</strong>
+            <span th:text="${errorMessage}">Reservation failed</span>
+        </div>
+
+        <div th:if="${reservationResponse != null}">
+            <hr>
+            <h3>Confirmation</h3>
+            <div>Status: <span th:text="${reservationResponse.status}">CONFIRMED</span></div>
+            <div th:if="${reservationResponse.reference != null}">
+                Reference: <span th:text="${reservationResponse.reference}">REF</span>
+            </div>
+            <div th:if="${reservationResponse.totalAmount != null}">
+                Total: <span th:text="${reservationResponse.totalAmount}">0</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Results</h2>
+
+        <div th:if="${results == null}">
+            <p class="muted">Run a search to see offers.</p>
+        </div>
+
+        <div th:if="${results != null && results.isEmpty()}">
+            <p class="muted">No hotels match this search.</p>
+        </div>
+
+        <div th:if="${results != null}" th:each="entry : ${results}">
+            <div>
+                <strong th:text="${hotelsByUrl[entry.key]} ?: ${entry.key}">Hotel</strong>
+                <span class="pill" th:if="${entry.value != null && entry.value.hotel != null}"
+                      th:text="${entry.value.hotel.stars} + '★'">4★</span>
+            </div>
+
+            <div class="muted" th:if="${entry.value != null && entry.value.hotel != null}"
+                 th:text="${entry.value.hotel.city} + ', ' + ${entry.value.hotel.country}">
+                City
+            </div>
+
+            <div class="muted" th:if="${entry.value != null && entry.value.hotel != null}"
+                 th:text="${entry.value.hotel.address}">
+                Address
+            </div>
+
+            <div th:if="${entry.value == null || entry.value.offers == null || entry.value.offers.isEmpty()}">
+                <p class="muted">No offers.</p>
+            </div>
+
+            <table th:if="${entry.value != null && entry.value.offers != null && !entry.value.offers.isEmpty()}">
+                <thead>
+                <tr>
+                    <th>Room</th>
+                    <th>Type</th>
+                    <th>Beds</th>
+                    <th>Total</th>
+                    <th>Action</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="o : ${entry.value.offers}">
+                    <td th:text="${o.roomNumber}">101</td>
+                    <td th:text="${o.roomType}">DOUBLE</td>
+                    <td th:text="${o.beds}">2</td>
+                    <td th:text="${#numbers.formatDecimal(o.discountedPriceTotal, 1, 2)}">0</td>
+                    <td>
+                        <form method="post" action="/reserveForm">
+                            <input type="hidden" name="hotelUrl" th:value="${entry.key}">
+                            <input type="hidden" name="chambreId" th:value="${o.chambreId}">
+                            <input type="hidden" name="startDate" th:value="${startDate}">
+                            <input type="hidden" name="endDate" th:value="${endDate}">
+                            <input type="hidden" name="guests" th:value="${guests}">
+                            <input type="hidden" name="city" th:value="${city}">
+                            <button class="btn" type="submit">Reserve</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+
+            <div th:if="${reserveChambreId != null && reserveHotelUrl != null && reserveHotelUrl == entry.key}">
+                <hr>
+                <h3>Reservation</h3>
+
+                <form method="post" action="/reserve">
+                    <input type="hidden" name="hotelUrl" th:value="${reserveHotelUrl}">
+                    <input type="hidden" name="chambreId" th:value="${reserveChambreId}">
+                    <input type="hidden" name="startDate" th:value="${startDate}">
+                    <input type="hidden" name="endDate" th:value="${endDate}">
+                    <input type="hidden" name="guests" th:value="${guests}">
+                    <input type="hidden" name="city" th:value="${city}">
+
+                    <div class="grid">
+                        <div>
+                            <label>First name</label><br>
+                            <input type="text" name="firstName" required>
+                        </div>
+                        <div>
+                            <label>Last name</label><br>
+                            <input type="text" name="lastName" required>
+                        </div>
+                    </div>
+                    <br>
+
+                    <div class="grid">
+                        <div>
+                            <label>Email</label><br>
+                            <input type="text" name="email">
+                        </div>
+                        <div>
+                            <label>Phone</label><br>
+                            <input type="text" name="phone">
+                        </div>
+                    </div>
+                    <br>
+
+                    <button class="btn" type="submit">Confirm</button>
+                </form>
+            </div>
+
+            <hr>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
