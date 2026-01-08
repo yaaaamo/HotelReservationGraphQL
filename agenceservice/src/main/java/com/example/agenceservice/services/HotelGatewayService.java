@@ -44,7 +44,7 @@ public class HotelGatewayService {
         logger.info("Successfully connected to hotel: {}", h.getName());
 
       } catch (WebClientRequestException e) {
-        // Bağlantı hatası - hotel servisi çalışmıyor
+
         logger.warn("Connection failed to hotel {}: {}", h.getName(), e.getMessage());
         results.put(h.getUrl(), dtos.SearchOfferResponse.unavailable(
                 h.getName(),
@@ -52,7 +52,7 @@ public class HotelGatewayService {
         ));
 
       } catch (GraphQlClientException e) {
-        // GraphQL hatası - authentication veya business logic hatası
+
         String errorMessage = extractGraphQlError(e);
         logger.warn("GraphQL error from hotel {}: {}", h.getName(), errorMessage);
 
@@ -71,7 +71,7 @@ public class HotelGatewayService {
         }
 
       } catch (Exception e) {
-        // Diğer hatalar
+
         logger.error("Unexpected error from hotel {}: {}", h.getName(), e.getMessage());
         results.put(h.getUrl(), new dtos.SearchOfferResponse(
                 new dtos.HotelInfo(h.getName(), 0, null, null, null, null, null),
@@ -92,14 +92,14 @@ public class HotelGatewayService {
       query($req: SearchOfferRequest!) {
         searchOffer(request: $req) {
           hotel { name stars address city country latitude longitude }
-          offers { chambreId roomNumber roomType beds nights basePriceTotal discountedPriceTotal }
+          offers { chambreId roomNumber roomType beds nights basePriceTotal discountedPriceTotal imageUrl }
         }
       }
     """;
 
     dtos.SearchOfferRequest req = new dtos.SearchOfferRequest(auth(), startDate, endDate, guests);
 
-    // GraphQL'den gelen response'u intermediate record'a al
+
     GraphQlSearchResponse graphQlResponse = hotel.client()
             .document(document)
             .variable("req", req)

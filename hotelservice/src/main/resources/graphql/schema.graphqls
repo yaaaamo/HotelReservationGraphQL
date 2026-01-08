@@ -46,6 +46,7 @@ type Offer {
     nights: Int!
     basePriceTotal: Float!
     discountedPriceTotal: Float!
+    imageUrl: String
 }
 
 enum RoomType {

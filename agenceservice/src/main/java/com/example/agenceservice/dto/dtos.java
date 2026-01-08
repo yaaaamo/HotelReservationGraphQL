@@ -77,7 +77,8 @@ public class dtos {
           int beds,
           int nights,
           double basePriceTotal,
-          double discountedPriceTotal
+          double discountedPriceTotal,
+          String imageUrl
   ) {}
 
   public record MakeReservationResponse(String status, String reference, Double totalAmount) {}

@@ -150,6 +150,11 @@
                 <tbody>
                 <tr th:each="o : ${entry.value.offers}">
                     <td th:text="${o.roomNumber}">101</td>
+                    <td>
+                        <img th:if="${o.imageUrl}" th:src="${o.imageUrl}"
+                             alt="Room" style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px;">
+                        <span th:unless="${o.imageUrl}" class="muted">No image</span>
+                    </td>
                     <td th:text="${o.roomType}">DOUBLE</td>
                     <td th:text="${o.beds}">2</td>
                     <td th:text="${#numbers.formatDecimal(o.discountedPriceTotal, 1, 2)} + ' €'">0</td>

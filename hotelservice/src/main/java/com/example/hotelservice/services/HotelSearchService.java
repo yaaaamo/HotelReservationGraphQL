@@ -103,7 +103,8 @@ public class HotelSearchService {
               c.getNombreLits(),
               nights,
               baseTotal,
-              discountedTotal
+              discountedTotal,
+              c.getImageUrl()
       ));
     }
     if (offers.isEmpty()) {

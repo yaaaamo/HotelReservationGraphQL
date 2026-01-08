@@ -9,6 +9,7 @@ public record Offer(
         int beds,
         int nights,
         double basePriceTotal,
-        double discountedPriceTotal
+        double discountedPriceTotal,
+        String imageUrl
 ) {}
 
