@@ -11,17 +11,27 @@
         th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; vertical-align: top; }
         .muted { color: #666; }
         .pill { display:inline-block; padding:2px 8px; border:1px solid #ddd; border-radius:999px; margin-left:8px; }
+        .pill-error { background: #f8d7da; border-color: #f5c2c7; color: #842029; }
+        .pill-warning { background: #fff3cd; border-color: #ffecb5; color: #664d03; }
         .btn { padding: 6px 10px; border: 1px solid #ccc; border-radius: 8px; background: #fff; cursor: pointer; }
         .btn:hover { background: #f6f6f6; }
         input { padding: 6px; width: 100%; box-sizing: border-box; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .error { border:1px solid #f5c2c7; background:#f8d7da; padding:10px; border-radius:8px; margin-top:12px; }
+        .error { border:1px solid #f5c2c7; background:#f8d7da; padding:10px; border-radius:8px; margin-top:12px; color: #842029; }
+        .warning { border:1px solid #ffecb5; background:#fff3cd; padding:10px; border-radius:8px; margin-top:8px; color: #664d03; }
+        .success { border:1px solid #badbcc; background:#d1e7dd; padding:10px; border-radius:8px; margin-top:12px; color: #0f5132; }
+        .hotel-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .status-connected { background: #198754; }
+        .status-unavailable { background: #dc3545; }
+        .status-auth-error { background: #ffc107; }
+        .status-error { background: #dc3545; }
     </style>
 </head>
 <body>
 
 <h1 th:text="${agencyName}">Agency</h1>
-<p class="muted">SearchOffer + MakeReservation (GraphQL)</p>
+<p class="muted">SearchOffer + MakeReservation (GraphQL) - Distributed Architecture</p>
 
 <div class="row">
 
@@ -62,15 +72,14 @@
             <span th:text="${errorMessage}">Reservation failed</span>
         </div>
 
-        <div th:if="${reservationResponse != null}">
-            <hr>
-            <h3>Confirmation</h3>
-            <div>Status: <span th:text="${reservationResponse.status}">CONFIRMED</span></div>
+        <div th:if="${reservationResponse != null}" class="success">
+            <h3 style="margin-top:0">✓ Reservation Confirmed</h3>
+            <div>Status: <strong th:text="${reservationResponse.status}">CONFIRMED</strong></div>
             <div th:if="${reservationResponse.reference != null}">
-                Reference: <span th:text="${reservationResponse.reference}">REF</span>
+                Reference: <strong th:text="${reservationResponse.reference}">REF</strong>
             </div>
             <div th:if="${reservationResponse.totalAmount != null}">
-                Total: <span th:text="${reservationResponse.totalAmount}">0</span>
+                Total: <strong th:text="${#numbers.formatDecimal(reservationResponse.totalAmount, 1, 2)} + ' €'">0</strong>
             </div>
         </div>
     </div>
@@ -87,27 +96,48 @@
         </div>
 
         <div th:if="${results != null}" th:each="entry : ${results}">
-            <div>
+
+            <!-- Hotel Header with Status -->
+            <div class="hotel-header">
+                <span class="status-dot"
+                      th:classappend="${entry.value.status?.name() == 'CONNECTED'} ? 'status-connected' :
+                                      (${entry.value.status?.name() == 'UNAVAILABLE'} ? 'status-unavailable' :
+                                      (${entry.value.status?.name() == 'AUTH_ERROR'} ? 'status-auth-error' : 'status-error'))">
+                </span>
                 <strong th:text="${hotelsByUrl[entry.key]} ?: ${entry.key}">Hotel</strong>
-                <span class="pill" th:if="${entry.value != null && entry.value.hotel != null}"
+                <span class="pill" th:if="${entry.value != null && entry.value.hotel != null && entry.value.hotel.stars > 0}"
                       th:text="${entry.value.hotel.stars} + '★'">4★</span>
+
+                <!-- Status Pills -->
+                <span class="pill pill-error" th:if="${entry.value.status?.name() == 'UNAVAILABLE'}">Offline</span>
+                <span class="pill pill-warning" th:if="${entry.value.status?.name() == 'AUTH_ERROR'}">Auth Error</span>
+                <span class="pill pill-error" th:if="${entry.value.status?.name() == 'ERROR'}">Error</span>
             </div>
 
-            <div class="muted" th:if="${entry.value != null && entry.value.hotel != null}"
-                 th:text="${entry.value.hotel.city} + ', ' + ${entry.value.hotel.country}">
-                City
+            <!-- Connection Error Message -->
+            <div th:if="${entry.value.errorMessage != null}" class="warning">
+                <span th:text="${entry.value.errorMessage}">Error message</span>
             </div>
 
-            <div class="muted" th:if="${entry.value != null && entry.value.hotel != null}"
-                 th:text="${entry.value.hotel.address}">
-                Address
+            <!-- Hotel Info (only if connected) -->
+            <div th:if="${entry.value.status?.name() == 'CONNECTED' && entry.value.hotel != null}">
+                <div class="muted" th:if="${entry.value.hotel.city != null}"
+                     th:text="${entry.value.hotel.city} + ', ' + ${entry.value.hotel.country}">
+                    City
+                </div>
+                <div class="muted" th:if="${entry.value.hotel.address != null}"
+                     th:text="${entry.value.hotel.address}">
+                    Address
+                </div>
             </div>
 
-            <div th:if="${entry.value == null || entry.value.offers == null || entry.value.offers.isEmpty()}">
-                <p class="muted">No offers.</p>
+            <!-- No offers message (only if connected) -->
+            <div th:if="${entry.value.status?.name() == 'CONNECTED' && (entry.value.offers == null || entry.value.offers.isEmpty())}">
+                <p class="muted">No rooms available for these dates.</p>
             </div>
 
-            <table th:if="${entry.value != null && entry.value.offers != null && !entry.value.offers.isEmpty()}">
+            <!-- Offers Table (only if connected and has offers) -->
+            <table th:if="${entry.value.status?.name() == 'CONNECTED' && entry.value.offers != null && !entry.value.offers.isEmpty()}">
                 <thead>
                 <tr>
                     <th>Room</th>
@@ -122,7 +152,7 @@
                     <td th:text="${o.roomNumber}">101</td>
                     <td th:text="${o.roomType}">DOUBLE</td>
                     <td th:text="${o.beds}">2</td>
-                    <td th:text="${#numbers.formatDecimal(o.discountedPriceTotal, 1, 2)}">0</td>
+                    <td th:text="${#numbers.formatDecimal(o.discountedPriceTotal, 1, 2)} + ' €'">0</td>
                     <td>
                         <form method="post" action="/reserveForm">
                             <input type="hidden" name="hotelUrl" th:value="${entry.key}">
@@ -138,6 +168,7 @@
                 </tbody>
             </table>
 
+            <!-- Reservation Form -->
             <div th:if="${reserveChambreId != null && reserveHotelUrl != null && reserveHotelUrl == entry.key}">
                 <hr>
                 <h3>Reservation</h3>
@@ -174,7 +205,7 @@
                     </div>
                     <br>
 
-                    <button class="btn" type="submit">Confirm</button>
+                    <button class="btn" type="submit">Confirm Reservation</button>
                 </form>
             </div>
 

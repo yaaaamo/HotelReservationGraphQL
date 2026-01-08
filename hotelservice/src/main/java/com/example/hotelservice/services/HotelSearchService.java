@@ -106,6 +106,17 @@ public class HotelSearchService {
               discountedTotal
       ));
     }
+    if (offers.isEmpty()) {
+      throw new ApiException(
+              ErrorCode.NOT_FOUND,
+              "No rooms available for requested dates",
+              Map.of(
+                      "startDate", start.toString(),
+                      "endDate", end.toString(),
+                      "guests", request.guests()
+              )
+      );
+    }
 
     return new SearchOfferResponse(hotelInfo(), offers);
   }
