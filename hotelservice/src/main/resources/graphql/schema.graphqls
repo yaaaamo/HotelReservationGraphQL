@@ -1,0 +1,83 @@
+schema {
+    query: Query
+    mutation: Mutation
+}
+
+type Query {
+    searchOffer(request: SearchOfferRequest!): SearchOfferResponse!
+}
+
+type Mutation {
+    makeReservation(request: MakeReservationRequest!): MakeReservationResponse!
+}
+
+input AgencyAuthInput {
+    agenceId: ID!
+    password: String!
+}
+
+input SearchOfferRequest {
+    auth: AgencyAuthInput!
+    startDate: String!
+    endDate: String!
+    guests: Int!
+}
+
+type SearchOfferResponse {
+    hotel: HotelInfo!
+    offers: [Offer!]!
+}
+
+type HotelInfo {
+    name: String!
+    stars: Int!
+    address: String!
+    city: String!
+    country: String!
+    latitude: Float
+    longitude: Float
+}
+
+type Offer {
+    chambreId: ID!
+    roomNumber: String!
+    roomType: RoomType!
+    beds: Int!
+    nights: Int!
+    basePriceTotal: Float!
+    discountedPriceTotal: Float!
+}
+
+enum RoomType {
+    SIMPLE
+    DOUBLE
+    SUITE
+    FAMILIALE
+}
+
+input MakeReservationRequest {
+    auth: AgencyAuthInput!
+    chambreId: ID!
+    startDate: String!
+    endDate: String!
+    client: ClientInput!
+}
+
+input ClientInput {
+    firstName: String!
+    lastName: String!
+    email: String
+    phone: String
+}
+
+type MakeReservationResponse {
+    status: ReservationStatus!
+    reference: String
+    totalAmount: Float
+}
+
+enum ReservationStatus {
+    CONFIRMED
+    CANCELLED
+    REFUSED
+}
